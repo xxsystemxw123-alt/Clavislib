@@ -1,45 +1,29 @@
 --[[
     ClavisLib - The ultimate Roblox UI library
-    Version 1.0.0 (Fix)
-    Features: Rayfield-inspired visuals + Orion-style architecture
-    Usage:
-        local ClavisLib = loadstring(game:HttpGet("URL"))()
-        local Window = ClavisLib:CreateWindow("Xerkol Hub")
-        local Tab = Window:CreateTab("Main")
-        local Section = Tab:AddSection("Settings")
-        Section:AddToggle({Name = "Enabled", Flag = "enabled", Default = true, Callback = function(v) print(v) end})
-        Section:AddButton({Name = "Click Me", Callback = function() print("Clicked") end})
-        -- See full API below
+    Version 1.0.1 (Luau optimized, error‑hardened)
+    Carga: local ClavisLib = loadstring(game:HttpGet("URL"))()
+           local Window = ClavisLib:CreateWindow("Title", {Theme = "Dark"})
 ]]
 
--- ==================== SERVICES ====================
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local CoreGui = game:GetService("CoreGui") or game:GetService("StarterGui")
-local HttpService = game:GetService("HttpService") -- for JSON flags (optional)
+local StarterGui = game:GetService("StarterGui")
 
--- ==================== UTILITY ====================
+-- ------------------- UTILITY --------------------
 local Utility = {}
-
-function Utility.CreateShadow(parent, size, offset, transparency)
+function Utility.CreateShadow(parent, offset, transparency)
     local shadow = Instance.new("Frame")
     shadow.Name = "Shadow"
-    shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    shadow.BackgroundColor3 = Color3.new(0,0,0)
     shadow.BorderSizePixel = 0
+    shadow.Size = UDim2.new(1,0,1,0)
     shadow.Position = UDim2.new(0, offset or 3, 0, offset or 3)
-    shadow.Size = size or UDim2.new(1, 0, 1, 0)
-    shadow.BackgroundTransparency = transparency or 0.85
+    shadow.BackgroundTransparency = transparency or 0.9
+    shadow.ZIndex = 0
     shadow.Parent = parent
     return shadow
-end
-
-function Utility.CreateBlurEffect(parent)
-    local blur = Instance.new("BlurEffect")
-    blur.Size = 24
-    blur.Parent = parent
-    return blur
 end
 
 function Utility.MakeDraggable(frame, dragPart)
@@ -47,7 +31,8 @@ function Utility.MakeDraggable(frame, dragPart)
     local dragging, dragStart, startPos
     local function update(input)
         local delta = input.Position - dragStart
-        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+                                   startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
     dragPart.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -74,15 +59,14 @@ end
 
 function Utility.Ripple(button)
     local ripple = Instance.new("Frame")
-    ripple.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    ripple.BackgroundColor3 = Color3.fromRGB(255,255,255)
     ripple.BackgroundTransparency = 0.7
     ripple.BorderSizePixel = 0
-    ripple.Size = UDim2.new(0, 0, 0, 0)
-    ripple.Position = UDim2.new(0.5, 0, 0.5, 0)
-    ripple.AnchorPoint = Vector2.new(0.5, 0.5)
+    ripple.Size = UDim2.new(0,0,0,0)
+    ripple.Position = UDim2.new(0.5,0,0.5,0)
+    ripple.AnchorPoint = Vector2.new(0.5,0.5)
     ripple.ZIndex = 10
     ripple.Parent = button
-
     local targetSize = math.max(button.AbsoluteSize.X, button.AbsoluteSize.Y) * 1.5
     local tween = TweenService:Create(ripple, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
         Size = UDim2.new(0, targetSize, 0, targetSize),
@@ -98,92 +82,91 @@ function Utility.GetMouseLocation()
     return UserInputService:GetMouseLocation()
 end
 
--- ==================== THEME MANAGER ====================
+-- ---------------- THEME MANAGER ------------------
 local ThemeManager = {}
 ThemeManager.Presets = {
     Dark = {
-        MainBg = Color3.fromRGB(25, 25, 30),
-        TitleBarBg = Color3.fromRGB(20, 20, 25),
-        TabBarBg = Color3.fromRGB(18, 18, 22),
-        TabInactiveBg = Color3.fromRGB(30, 30, 35),
-        TabActiveBg = Color3.fromRGB(66, 133, 244),
-        TabTextInactive = Color3.fromRGB(180, 180, 185),
-        TabTextActive = Color3.fromRGB(255, 255, 255),
-        Accent = Color3.fromRGB(66, 133, 244),
-        AccentText = Color3.fromRGB(255, 255, 255),
-        ElementBg = Color3.fromRGB(35, 35, 40),
-        ElementStroke = Color3.fromRGB(50, 50, 55),
-        ElementText = Color3.fromRGB(220, 220, 225),
-        ElementHover = Color3.fromRGB(45, 45, 50),
-        IndicatorOn = Color3.fromRGB(66, 133, 244),
-        IndicatorOff = Color3.fromRGB(60, 60, 65),
-        SliderTrack = Color3.fromRGB(45, 45, 50),
-        SliderFill = Color3.fromRGB(66, 133, 244),
-        SliderThumb = Color3.fromRGB(255, 255, 255),
-        DropdownBg = Color3.fromRGB(30, 30, 35),
-        DropdownHover = Color3.fromRGB(45, 45, 50),
-        Scrollbar = Color3.fromRGB(66, 133, 244),
-        ScrollbarBg = Color3.fromRGB(20, 20, 25),
-        Shadow = Color3.fromRGB(0, 0, 0),
-        NotificationBg = Color3.fromRGB(40, 40, 45),
-        NotificationText = Color3.fromRGB(255, 255, 255),
+        MainBg = Color3.fromRGB(25,25,30),
+        TitleBarBg = Color3.fromRGB(20,20,25),
+        TabBarBg = Color3.fromRGB(18,18,22),
+        TabInactiveBg = Color3.fromRGB(30,30,35),
+        TabActiveBg = Color3.fromRGB(66,133,244),
+        TabTextInactive = Color3.fromRGB(180,180,185),
+        TabTextActive = Color3.fromRGB(255,255,255),
+        Accent = Color3.fromRGB(66,133,244),
+        AccentText = Color3.fromRGB(255,255,255),
+        ElementBg = Color3.fromRGB(35,35,40),
+        ElementStroke = Color3.fromRGB(50,50,55),
+        ElementText = Color3.fromRGB(220,220,225),
+        ElementHover = Color3.fromRGB(45,45,50),
+        IndicatorOn = Color3.fromRGB(66,133,244),
+        IndicatorOff = Color3.fromRGB(60,60,65),
+        SliderTrack = Color3.fromRGB(45,45,50),
+        SliderFill = Color3.fromRGB(66,133,244),
+        SliderThumb = Color3.fromRGB(255,255,255),
+        DropdownBg = Color3.fromRGB(30,30,35),
+        DropdownHover = Color3.fromRGB(45,45,50),
+        Scrollbar = Color3.fromRGB(66,133,244),
+        ScrollbarBg = Color3.fromRGB(20,20,25),
+        Shadow = Color3.fromRGB(0,0,0),
+        NotificationBg = Color3.fromRGB(40,40,45),
+        NotificationText = Color3.fromRGB(255,255,255),
     },
     Light = {
-        MainBg = Color3.fromRGB(240, 240, 245),
-        TitleBarBg = Color3.fromRGB(230, 230, 235),
-        TabBarBg = Color3.fromRGB(220, 220, 225),
-        TabInactiveBg = Color3.fromRGB(210, 210, 215),
-        TabActiveBg = Color3.fromRGB(66, 133, 244),
-        TabTextInactive = Color3.fromRGB(100, 100, 110),
-        TabTextActive = Color3.fromRGB(255, 255, 255),
-        Accent = Color3.fromRGB(66, 133, 244),
-        AccentText = Color3.fromRGB(255, 255, 255),
-        ElementBg = Color3.fromRGB(255, 255, 255),
-        ElementStroke = Color3.fromRGB(200, 200, 210),
-        ElementText = Color3.fromRGB(30, 30, 35),
-        ElementHover = Color3.fromRGB(245, 245, 250),
-        IndicatorOn = Color3.fromRGB(66, 133, 244),
-        IndicatorOff = Color3.fromRGB(180, 180, 190),
-        SliderTrack = Color3.fromRGB(210, 210, 215),
-        SliderFill = Color3.fromRGB(66, 133, 244),
-        SliderThumb = Color3.fromRGB(255, 255, 255),
-        DropdownBg = Color3.fromRGB(245, 245, 250),
-        DropdownHover = Color3.fromRGB(230, 230, 235),
-        Scrollbar = Color3.fromRGB(66, 133, 244),
-        ScrollbarBg = Color3.fromRGB(210, 210, 215),
-        Shadow = Color3.fromRGB(0, 0, 0),
-        NotificationBg = Color3.fromRGB(255, 255, 255),
-        NotificationText = Color3.fromRGB(30, 30, 35),
+        MainBg = Color3.fromRGB(240,240,245),
+        TitleBarBg = Color3.fromRGB(230,230,235),
+        TabBarBg = Color3.fromRGB(220,220,225),
+        TabInactiveBg = Color3.fromRGB(210,210,215),
+        TabActiveBg = Color3.fromRGB(66,133,244),
+        TabTextInactive = Color3.fromRGB(100,100,110),
+        TabTextActive = Color3.fromRGB(255,255,255),
+        Accent = Color3.fromRGB(66,133,244),
+        AccentText = Color3.fromRGB(255,255,255),
+        ElementBg = Color3.fromRGB(255,255,255),
+        ElementStroke = Color3.fromRGB(200,200,210),
+        ElementText = Color3.fromRGB(30,30,35),
+        ElementHover = Color3.fromRGB(245,245,250),
+        IndicatorOn = Color3.fromRGB(66,133,244),
+        IndicatorOff = Color3.fromRGB(180,180,190),
+        SliderTrack = Color3.fromRGB(210,210,215),
+        SliderFill = Color3.fromRGB(66,133,244),
+        SliderThumb = Color3.fromRGB(255,255,255),
+        DropdownBg = Color3.fromRGB(245,245,250),
+        DropdownHover = Color3.fromRGB(230,230,235),
+        Scrollbar = Color3.fromRGB(66,133,244),
+        ScrollbarBg = Color3.fromRGB(210,210,215),
+        Shadow = Color3.fromRGB(0,0,0),
+        NotificationBg = Color3.fromRGB(255,255,255),
+        NotificationText = Color3.fromRGB(30,30,35),
     },
     Amethyst = {
-        MainBg = Color3.fromRGB(35, 25, 45),
-        TitleBarBg = Color3.fromRGB(30, 20, 40),
-        TabBarBg = Color3.fromRGB(25, 15, 35),
-        TabInactiveBg = Color3.fromRGB(40, 30, 50),
-        TabActiveBg = Color3.fromRGB(170, 100, 255),
-        TabTextInactive = Color3.fromRGB(200, 180, 220),
-        TabTextActive = Color3.fromRGB(255, 255, 255),
-        Accent = Color3.fromRGB(170, 100, 255),
-        AccentText = Color3.fromRGB(255, 255, 255),
-        ElementBg = Color3.fromRGB(45, 35, 55),
-        ElementStroke = Color3.fromRGB(70, 55, 85),
-        ElementText = Color3.fromRGB(230, 220, 245),
-        ElementHover = Color3.fromRGB(55, 45, 65),
-        IndicatorOn = Color3.fromRGB(170, 100, 255),
-        IndicatorOff = Color3.fromRGB(70, 55, 85),
-        SliderTrack = Color3.fromRGB(55, 45, 70),
-        SliderFill = Color3.fromRGB(170, 100, 255),
-        SliderThumb = Color3.fromRGB(255, 255, 255),
-        DropdownBg = Color3.fromRGB(40, 30, 50),
-        DropdownHover = Color3.fromRGB(55, 45, 65),
-        Scrollbar = Color3.fromRGB(170, 100, 255),
-        ScrollbarBg = Color3.fromRGB(25, 15, 35),
-        Shadow = Color3.fromRGB(0, 0, 0),
-        NotificationBg = Color3.fromRGB(50, 40, 60),
-        NotificationText = Color3.fromRGB(255, 255, 255),
+        MainBg = Color3.fromRGB(35,25,45),
+        TitleBarBg = Color3.fromRGB(30,20,40),
+        TabBarBg = Color3.fromRGB(25,15,35),
+        TabInactiveBg = Color3.fromRGB(40,30,50),
+        TabActiveBg = Color3.fromRGB(170,100,255),
+        TabTextInactive = Color3.fromRGB(200,180,220),
+        TabTextActive = Color3.fromRGB(255,255,255),
+        Accent = Color3.fromRGB(170,100,255),
+        AccentText = Color3.fromRGB(255,255,255),
+        ElementBg = Color3.fromRGB(45,35,55),
+        ElementStroke = Color3.fromRGB(70,55,85),
+        ElementText = Color3.fromRGB(230,220,245),
+        ElementHover = Color3.fromRGB(55,45,65),
+        IndicatorOn = Color3.fromRGB(170,100,255),
+        IndicatorOff = Color3.fromRGB(70,55,85),
+        SliderTrack = Color3.fromRGB(55,45,70),
+        SliderFill = Color3.fromRGB(170,100,255),
+        SliderThumb = Color3.fromRGB(255,255,255),
+        DropdownBg = Color3.fromRGB(40,30,50),
+        DropdownHover = Color3.fromRGB(55,45,65),
+        Scrollbar = Color3.fromRGB(170,100,255),
+        ScrollbarBg = Color3.fromRGB(25,15,35),
+        Shadow = Color3.fromRGB(0,0,0),
+        NotificationBg = Color3.fromRGB(50,40,60),
+        NotificationText = Color3.fromRGB(255,255,255),
     }
 }
-
 ThemeManager.Current = ThemeManager.Presets.Dark
 
 function ThemeManager.SetTheme(theme)
@@ -192,21 +175,20 @@ function ThemeManager.SetTheme(theme)
     else
         ThemeManager.Current = theme
     end
-    -- Trigger theme update event (handled by each window)
     if ThemeManager.OnThemeChanged then
         ThemeManager.OnThemeChanged()
     end
 end
 
--- ==================== GLOBAL FLAG STORE ====================
+-- ----------------- GLOBAL FLAGS ------------------
 local Flags = {}
 
 -- ==================== CLASSLIB ====================
 local ClavisLib = {
-    Version = "1.0.0"
+    Version = "1.0.1"
 }
 
--- ==================== WINDOW CREATION ====================
+-- ================ WINDOW CREATION ================
 function ClavisLib:CreateWindow(title, config)
     config = config or {}
     local theme = ThemeManager.Current
@@ -215,40 +197,34 @@ function ClavisLib:CreateWindow(title, config)
         theme = ThemeManager.Current
     end
 
-    -- Store all connections for cleanup
     local connections = {}
-    local activeTweens = {}
 
-    -- Create ScreenGui
     local Gui = Instance.new("ScreenGui")
     Gui.Name = "ClavisLib_" .. title
     Gui.ResetOnSpawn = false
     pcall(function() Gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui") end)
 
-    -- Overlay (dim background)
     local Overlay = Instance.new("Frame")
     Overlay.Name = "Overlay"
-    Overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    Overlay.BackgroundColor3 = Color3.fromRGB(0,0,0)
     Overlay.BackgroundTransparency = 0.5
     Overlay.BorderSizePixel = 0
-    Overlay.Size = UDim2.new(1, 0, 1, 0)
+    Overlay.Size = UDim2.new(1,0,1,0)
     Overlay.Visible = config.BlurBackground ~= false
     Overlay.Parent = Gui
 
-    -- Main Window Frame
     local Window = {}
     local Main = Instance.new("Frame")
     Main.Name = "Main"
-    Main.Size = config.Size or UDim2.new(0, 600, 0, 450)
+    Main.Size = config.Size or UDim2.new(0,600,0,450)
     Main.Position = UDim2.new(0.5, -(config.Size and config.Size.X.Offset or 600)/2, 0.5, -(config.Size and config.Size.Y.Offset or 450)/2)
     Main.BackgroundColor3 = theme.MainBg
     Main.BorderSizePixel = 0
     Main.ClipsDescendants = true
     Main.Parent = Gui
 
-    -- Rounded corners via UIStroke and solid background
     local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 12)
+    Corner.CornerRadius = UDim.new(0,12)
     Corner.Parent = Main
 
     local MainStroke = Instance.new("UIStroke")
@@ -257,27 +233,25 @@ function ClavisLib:CreateWindow(title, config)
     MainStroke.Thickness = 2
     MainStroke.Parent = Main
 
-    -- Shadow for window (behind)
     local WindowShadow = Instance.new("Frame")
     WindowShadow.Name = "WinShadow"
-    WindowShadow.Size = UDim2.new(1, 0, 1, 0)
-    WindowShadow.Position = UDim2.new(0, 4, 0, 4)
+    WindowShadow.Size = UDim2.new(1,0,1,0)
+    WindowShadow.Position = UDim2.new(0,4,0,4)
     WindowShadow.BackgroundColor3 = theme.Shadow
     WindowShadow.BackgroundTransparency = 0.85
     WindowShadow.BorderSizePixel = 0
     WindowShadow.ZIndex = Main.ZIndex - 1
-    Instance.new("UICorner", WindowShadow).CornerRadius = UDim.new(0, 12)
+    Instance.new("UICorner", WindowShadow).CornerRadius = UDim.new(0,12)
     WindowShadow.Parent = Main
 
-    -- Title Bar
     local TitleBar = Instance.new("Frame")
     TitleBar.Name = "TitleBar"
-    TitleBar.Size = UDim2.new(1, 0, 0, 40)
+    TitleBar.Size = UDim2.new(1,0,0,40)
     TitleBar.BackgroundColor3 = theme.TitleBarBg
     TitleBar.BorderSizePixel = 0
     TitleBar.Parent = Main
-    Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 12)
-    -- Gradient on title bar
+    Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0,12)
+
     local TitleGradient = Instance.new("UIGradient")
     TitleGradient.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, theme.TitleBarBg),
@@ -286,7 +260,6 @@ function ClavisLib:CreateWindow(title, config)
     TitleGradient.Rotation = 90
     TitleGradient.Parent = TitleBar
 
-    -- Window Title
     local TitleLabel = Instance.new("TextLabel")
     TitleLabel.Name = "Title"
     TitleLabel.BackgroundTransparency = 1
@@ -294,23 +267,22 @@ function ClavisLib:CreateWindow(title, config)
     TitleLabel.Text = title
     TitleLabel.TextColor3 = theme.ElementText
     TitleLabel.TextSize = 16
-    TitleLabel.Size = UDim2.new(1, -80, 1, 0)
-    TitleLabel.Position = UDim2.new(0, 15, 0, 0)
+    TitleLabel.Size = UDim2.new(1,-80,1,0)
+    TitleLabel.Position = UDim2.new(0,15,0,0)
     TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
     TitleLabel.Parent = TitleBar
 
-    -- Close Button
     local CloseButton = Instance.new("ImageButton")
     CloseButton.Name = "Close"
-    CloseButton.Size = UDim2.new(0, 28, 0, 28)
-    CloseButton.Position = UDim2.new(1, -35, 0, 6)
-    CloseButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+    CloseButton.Size = UDim2.new(0,28,0,28)
+    CloseButton.Position = UDim2.new(1,-35,0,6)
+    CloseButton.BackgroundColor3 = Color3.fromRGB(255,100,100)
     CloseButton.BackgroundTransparency = 1
-    CloseButton.Image = "rbxassetid://3926305904" -- X icon
+    CloseButton.Image = "rbxassetid://3926305904"
     CloseButton.ImageColor3 = theme.ElementText
     CloseButton.ScaleType = Enum.ScaleType.Fit
     CloseButton.ZIndex = 10
-    Instance.new("UICorner", CloseButton).CornerRadius = UDim.new(1, 0)
+    Instance.new("UICorner", CloseButton).CornerRadius = UDim.new(1,0)
     CloseButton.Parent = TitleBar
 
     local CloseStroke = Instance.new("UIStroke")
@@ -325,17 +297,16 @@ function ClavisLib:CreateWindow(title, config)
         TweenService:Create(CloseButton, TweenInfo.new(0.2), {BackgroundTransparency = 1, ImageColor3 = theme.ElementText}):Play()
     end))
 
-    -- Minimize Button
     local MinimizeButton = Instance.new("ImageButton")
     MinimizeButton.Name = "Minimize"
-    MinimizeButton.Size = UDim2.new(0, 28, 0, 28)
-    MinimizeButton.Position = UDim2.new(1, -70, 0, 6)
+    MinimizeButton.Size = UDim2.new(0,28,0,28)
+    MinimizeButton.Position = UDim2.new(1,-70,0,6)
     MinimizeButton.BackgroundTransparency = 1
-    MinimizeButton.Image = "rbxassetid://3926305904" -- reuse
+    MinimizeButton.Image = "rbxassetid://3926305904"
     MinimizeButton.ImageColor3 = theme.ElementText
     MinimizeButton.ScaleType = Enum.ScaleType.Fit
     MinimizeButton.ZIndex = 10
-    Instance.new("UICorner", MinimizeButton).CornerRadius = UDim.new(1, 0)
+    Instance.new("UICorner", MinimizeButton).CornerRadius = UDim.new(1,0)
     MinimizeButton.Parent = TitleBar
     table.insert(connections, MinimizeButton.MouseEnter:Connect(function()
         TweenService:Create(MinimizeButton, TweenInfo.new(0.2), {BackgroundTransparency = 0.7, ImageColor3 = Color3.fromRGB(255,255,255)}):Play()
@@ -344,34 +315,30 @@ function ClavisLib:CreateWindow(title, config)
         TweenService:Create(MinimizeButton, TweenInfo.new(0.2), {BackgroundTransparency = 1, ImageColor3 = theme.ElementText}):Play()
     end))
 
-    -- Minimize UI (floating icon)
     local MinimizedIcon = Instance.new("ImageButton")
     MinimizedIcon.Name = "MinimizedIcon"
-    MinimizedIcon.Size = UDim2.new(0, 50, 0, 50)
-    MinimizedIcon.Position = UDim2.new(0.5, -25, 0.8, 0)
+    MinimizedIcon.Size = UDim2.new(0,50,0,50)
+    MinimizedIcon.Position = UDim2.new(0.5,-25,0.8,0)
     MinimizedIcon.BackgroundColor3 = theme.Accent
-    MinimizedIcon.Image = "rbxassetid://3926305904" -- placeholder
+    MinimizedIcon.Image = "rbxassetid://3926305904"
     MinimizedIcon.ScaleType = Enum.ScaleType.Fit
     MinimizedIcon.Visible = false
-    Instance.new("UICorner", MinimizedIcon).CornerRadius = UDim.new(1, 0)
+    Instance.new("UICorner", MinimizedIcon).CornerRadius = UDim.new(1,0)
     MinimizedIcon.Parent = Gui
 
-    -- Resize Handle
+    -- Resize handle
     if config.Resizable ~= false then
         local ResizeHandle = Instance.new("ImageButton")
         ResizeHandle.Name = "Resize"
-        ResizeHandle.Size = UDim2.new(0, 20, 0, 20)
-        ResizeHandle.Position = UDim2.new(1, -20, 1, -20)
+        ResizeHandle.Size = UDim2.new(0,20,0,20)
+        ResizeHandle.Position = UDim2.new(1,-20,1,-20)
         ResizeHandle.BackgroundTransparency = 1
         ResizeHandle.Image = "rbxassetid://3926305904"
         ResizeHandle.ImageColor3 = theme.ElementText
         ResizeHandle.ImageTransparency = 0.5
         ResizeHandle.ZIndex = 10
         ResizeHandle.Parent = Main
-
-        -- Resize logic
-        local resizing = false
-        local resizeStart, startSize
+        local resizing, resizeStart, startSize
         table.insert(connections, ResizeHandle.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 resizing = true
@@ -396,10 +363,8 @@ function ClavisLib:CreateWindow(title, config)
         end))
     end
 
-    -- Drag handling
     Utility.MakeDraggable(Main, TitleBar)
 
-    -- Minimize logic
     local minimized = false
     local originalSize = Main.Size
     local originalPosition = Main.Position
@@ -430,32 +395,32 @@ function ClavisLib:CreateWindow(title, config)
         }):Play()
     end))
 
-    -- Tab container (scrollable)
+    -- Tab bar (scrollable)
     local TabBar = Instance.new("ScrollingFrame")
     TabBar.Name = "TabBar"
-    TabBar.Size = UDim2.new(1, -10, 0, 44)
-    TabBar.Position = UDim2.new(0, 5, 0, 42)
+    TabBar.Size = UDim2.new(1,-10,0,44)
+    TabBar.Position = UDim2.new(0,5,0,42)
     TabBar.BackgroundColor3 = theme.TabBarBg
     TabBar.BackgroundTransparency = 0.8
     TabBar.BorderSizePixel = 0
     TabBar.ScrollBarThickness = 0
     TabBar.ClipsDescendants = true
-    TabBar.CanvasSize = UDim2.new(0, 0, 0, 0)
+    TabBar.CanvasSize = UDim2.new(0,0,0,0)
     TabBar.ScrollingDirection = Enum.ScrollingDirection.X
-    Instance.new("UICorner", TabBar).CornerRadius = UDim.new(0, 22)
+    Instance.new("UICorner", TabBar).CornerRadius = UDim.new(0,22)
     TabBar.Parent = Main
 
     local TabList = Instance.new("UIListLayout")
     TabList.FillDirection = Enum.FillDirection.Horizontal
     TabList.HorizontalAlignment = Enum.HorizontalAlignment.Left
     TabList.VerticalAlignment = Enum.VerticalAlignment.Center
-    TabList.Padding = UDim.new(0, 6)
+    TabList.Padding = UDim.new(0,6)
     TabList.Parent = TabBar
 
-    -- Fade indicators for scroll
+    -- Fade indicators
     local LeftFade = Instance.new("Frame")
-    LeftFade.Size = UDim2.new(0, 20, 1, 0)
-    LeftFade.Position = UDim2.new(0, 0, 0, 0)
+    LeftFade.Size = UDim2.new(0,20,1,0)
+    LeftFade.Position = UDim2.new(0,0,0,0)
     LeftFade.BackgroundTransparency = 1
     LeftFade.BorderSizePixel = 0
     LeftFade.ZIndex = 2
@@ -465,8 +430,8 @@ function ClavisLib:CreateWindow(title, config)
     })
     LeftFade.Parent = TabBar
     local RightFade = Instance.new("Frame")
-    RightFade.Size = UDim2.new(0, 20, 1, 0)
-    RightFade.Position = UDim2.new(1, -20, 0, 0)
+    RightFade.Size = UDim2.new(0,20,1,0)
+    RightFade.Position = UDim2.new(1,-20,0,0)
     RightFade.BackgroundTransparency = 1
     RightFade.BorderSizePixel = 0
     RightFade.ZIndex = 2
@@ -476,33 +441,31 @@ function ClavisLib:CreateWindow(title, config)
     })
     RightFade.Parent = TabBar
 
-    -- Content area (below tabs)
     local ContentArea = Instance.new("Frame")
     ContentArea.Name = "Content"
-    ContentArea.Size = UDim2.new(1, -20, 1, -100)
-    ContentArea.Position = UDim2.new(0, 10, 0, 90)
+    ContentArea.Size = UDim2.new(1,-20,1,-100)
+    ContentArea.Position = UDim2.new(0,10,0,90)
     ContentArea.BackgroundTransparency = 1
     ContentArea.BorderSizePixel = 0
     ContentArea.Parent = Main
 
-    local TabContent = {}
+    local TabContent = {}  -- [name] = ScrollingFrame
     local activeTab = nil
 
-    -- Notification system
+    -- Notifications
     local NotifHolder = Instance.new("Frame")
     NotifHolder.Name = "Notifications"
-    NotifHolder.Size = UDim2.new(0, 300, 1, 0)
-    NotifHolder.Position = UDim2.new(1, -310, 0, 10)
+    NotifHolder.Size = UDim2.new(0,300,1,0)
+    NotifHolder.Position = UDim2.new(1,-310,0,10)
     NotifHolder.BackgroundTransparency = 1
     NotifHolder.BorderSizePixel = 0
     NotifHolder.Parent = Gui
     local NotifList = Instance.new("UIListLayout")
     NotifList.VerticalAlignment = Enum.VerticalAlignment.Top
     NotifList.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    NotifList.Padding = UDim.new(0, 8)
+    NotifList.Padding = UDim.new(0,8)
     NotifList.Parent = NotifHolder
 
-    -- Theme update function
     local function applyTheme()
         local th = ThemeManager.Current
         Main.BackgroundColor3 = th.MainBg
@@ -516,23 +479,9 @@ function ClavisLib:CreateWindow(title, config)
         CloseButton.ImageColor3 = th.ElementText
         MinimizeButton.ImageColor3 = th.ElementText
         TabBar.BackgroundColor3 = th.TabBarBg
-        for _, elem in ipairs(TabBar:GetChildren()) do
-            if elem:IsA("TextButton") and elem.Name ~= "TabBtn" then -- placeholder
-            end
-        end
-        -- Update tab buttons and content recursively
-        for _, contentFrame in pairs(TabContent) do
-            for _, obj in ipairs(contentFrame:GetDescendants()) do
-                if obj:IsA("GuiObject") then
-                    -- update specific element colors based on their role (we'll update via stored references)
-                end
-            end
-        end
-        -- Update shadows
         WindowShadow.BackgroundColor3 = th.Shadow
     end
 
-    -- Register theme changed callback
     local prevOnThemeChanged = ThemeManager.OnThemeChanged
     ThemeManager.OnThemeChanged = function()
         if prevOnThemeChanged then prevOnThemeChanged() end
@@ -545,10 +494,9 @@ function ClavisLib:CreateWindow(title, config)
         Tab.Name = name
         Tab.Icon = icon or ""
 
-        -- Tab button inside scrollable TabBar
         local TabBtn = Instance.new("TextButton")
         TabBtn.Name = "Tab_" .. name
-        TabBtn.Size = UDim2.new(0, 0, 1, -10) -- auto width later
+        TabBtn.Size = UDim2.new(0,0,1,-10)
         TabBtn.BackgroundColor3 = ThemeManager.Current.TabInactiveBg
         TabBtn.Text = (icon ~= "" and icon.."  " or "") .. name
         TabBtn.TextColor3 = ThemeManager.Current.TabTextInactive
@@ -556,15 +504,12 @@ function ClavisLib:CreateWindow(title, config)
         TabBtn.TextSize = 14
         TabBtn.BorderSizePixel = 0
         TabBtn.AutoButtonColor = false
-        Instance.new("UICorner", TabBtn).CornerRadius = UDim.new(0, 15)
+        Instance.new("UICorner", TabBtn).CornerRadius = UDim.new(0,15)
         TabBtn.Parent = TabBar
 
-        -- Auto size based on text
         local padding = 30
         TabBtn.Size = UDim2.new(0, TabBtn.TextBounds.X + padding, 1, -10)
-        TabBtn.LayoutOrder = #TabBar:GetChildren() -- approximate
 
-        -- Update canvas size
         local function updateCanvas()
             local totalWidth = 0
             for _, child in ipairs(TabBar:GetChildren()) do
@@ -577,26 +522,24 @@ function ClavisLib:CreateWindow(title, config)
         updateCanvas()
         TabBtn:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateCanvas)
 
-        -- Content frame for this tab
         local Content = Instance.new("ScrollingFrame")
         Content.Name = name .. "_Content"
-        Content.Size = UDim2.new(1, 0, 1, 0)
+        Content.Size = UDim2.new(1,0,1,0)
         Content.BackgroundTransparency = 1
         Content.BorderSizePixel = 0
         Content.ScrollBarThickness = 4
         Content.ScrollBarImageColor3 = ThemeManager.Current.Scrollbar
         Content.ScrollBarImageTransparency = 0.5
-        Content.CanvasSize = UDim2.new(0, 0, 0, 0)
+        Content.CanvasSize = UDim2.new(0,0,0,0)
         Content.AutomaticCanvasSize = Enum.AutomaticSize.Y
         Content.Visible = false
         Content.Parent = ContentArea
 
         local ContentList = Instance.new("UIListLayout")
-        ContentList.Padding = UDim.new(0, 8)
+        ContentList.Padding = UDim.new(0,8)
         ContentList.HorizontalAlignment = Enum.HorizontalAlignment.Center
         ContentList.Parent = Content
 
-        -- Active tracking
         local function activate()
             for _, otherContent in pairs(TabContent) do
                 otherContent.Visible = false
@@ -615,27 +558,24 @@ function ClavisLib:CreateWindow(title, config)
         end
 
         table.insert(connections, TabBtn.MouseButton1Click:Connect(activate))
-        -- Store content frame
         TabContent[name] = Content
 
-        -- Automatically activate first tab
         if not activeTab then
             activate()
         end
 
-        -- Tab methods for sections
         function Tab:AddSection(sectionName, collapsed)
             local Section = {}
             local SectionFrame = Instance.new("Frame")
             SectionFrame.Name = sectionName
-            SectionFrame.Size = UDim2.new(1, -10, 0, 30)
+            SectionFrame.Size = UDim2.new(1,-10,0,30)
             SectionFrame.BackgroundTransparency = 1
             SectionFrame.BorderSizePixel = 0
             SectionFrame.Parent = Content
 
             local Header = Instance.new("TextLabel")
             Header.Name = "Header"
-            Header.Size = UDim2.new(1, 0, 0, 30)
+            Header.Size = UDim2.new(1,0,0,30)
             Header.BackgroundTransparency = 1
             Header.Font = Enum.Font.GothamBold
             Header.Text = sectionName
@@ -645,8 +585,8 @@ function ClavisLib:CreateWindow(title, config)
             Header.Parent = SectionFrame
 
             local SeparatorLine = Instance.new("Frame")
-            SeparatorLine.Size = UDim2.new(1, 0, 0, 1)
-            SeparatorLine.Position = UDim2.new(0, 0, 0, 30)
+            SeparatorLine.Size = UDim2.new(1,0,0,1)
+            SeparatorLine.Position = UDim2.new(0,0,0,30)
             SeparatorLine.BackgroundColor3 = ThemeManager.Current.ElementStroke
             SeparatorLine.BorderSizePixel = 0
             Instance.new("UIGradient", SeparatorLine).Color = ColorSequence.new({
@@ -655,13 +595,12 @@ function ClavisLib:CreateWindow(title, config)
             })
             SeparatorLine.Parent = SectionFrame
 
-            -- Collapsible logic
             local CollapseButton
             local isCollapsed = collapsed or false
             if collapsed then
                 CollapseButton = Instance.new("TextButton")
-                CollapseButton.Size = UDim2.new(0, 20, 0, 20)
-                CollapseButton.Position = UDim2.new(1, -20, 0, 5)
+                CollapseButton.Size = UDim2.new(0,20,0,20)
+                CollapseButton.Position = UDim2.new(1,-20,0,5)
                 CollapseButton.BackgroundTransparency = 1
                 CollapseButton.Text = "▼"
                 CollapseButton.TextColor3 = ThemeManager.Current.Accent
@@ -670,16 +609,15 @@ function ClavisLib:CreateWindow(title, config)
                 CollapseButton.Parent = SectionFrame
             end
 
-            -- Elements container
             local ElementsFrame = Instance.new("Frame")
             ElementsFrame.Name = "Elements"
-            ElementsFrame.Size = UDim2.new(1, 0, 0, 0)
+            ElementsFrame.Size = UDim2.new(1,0,0,0)
             ElementsFrame.BackgroundTransparency = 1
             ElementsFrame.BorderSizePixel = 0
             ElementsFrame.Visible = not isCollapsed
             ElementsFrame.ClipsDescendants = true
             local ElementsList = Instance.new("UIListLayout")
-            ElementsList.Padding = UDim.new(0, 6)
+            ElementsList.Padding = UDim.new(0,6)
             ElementsList.Parent = ElementsFrame
             ElementsFrame.Parent = SectionFrame
 
@@ -687,9 +625,8 @@ function ClavisLib:CreateWindow(title, config)
                 local headerHeight = 30
                 local elementHeight = ElementsFrame.Visible and ElementsList.AbsoluteContentSize.Y or 0
                 local totalHeight = headerHeight + elementHeight + (elementHeight > 0 and 10 or 0)
-                SectionFrame.Size = UDim2.new(1, -10, 0, totalHeight)
-                -- Update canvas size of content
-                Content.CanvasSize = UDim2.new(0, 0, 0, ContentList.AbsoluteContentSize.Y + 20)
+                SectionFrame.Size = UDim2.new(1,-10,0,totalHeight)
+                Content.CanvasSize = UDim2.new(0,0,0, ContentList.AbsoluteContentSize.Y + 20)
             end
 
             local function collapseToggle()
@@ -704,21 +641,19 @@ function ClavisLib:CreateWindow(title, config)
                 CollapseButton.MouseButton1Click:Connect(collapseToggle)
             end
 
-            -- When elements added/removed
             ElementsList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSectionHeight)
             updateSectionHeight()
 
-            -- Helper to add element wrapper
             local function addElement(config, elementConstructor)
                 local wrapper = Instance.new("Frame")
                 wrapper.Name = config.Name or "Element"
-                wrapper.Size = UDim2.new(1, 0, 0, 40)
+                wrapper.Size = UDim2.new(1,0,0,40)
                 wrapper.BackgroundColor3 = ThemeManager.Current.ElementBg
                 wrapper.BorderSizePixel = 0
-                Instance.new("UICorner", wrapper).CornerRadius = UDim.new(0, 8)
+                Instance.new("UICorner", wrapper).CornerRadius = UDim.new(0,8)
                 wrapper.Parent = ElementsFrame
 
-                local shadow = Utility.CreateShadow(wrapper, UDim2.new(1, 0, 1, 0), 2, 0.9)
+                local shadow = Utility.CreateShadow(wrapper, UDim2.new(1,0,1,0), 2, 0.9)
                 shadow.ZIndex = wrapper.ZIndex - 1
                 local stroke = Instance.new("UIStroke")
                 stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -726,16 +661,16 @@ function ClavisLib:CreateWindow(title, config)
                 stroke.Thickness = 1.5
                 stroke.Parent = wrapper
 
-                -- Tooltip
+                -- tooltip
                 if config.Description then
                     local tooltip
                     local function showTooltip()
                         if tooltip then tooltip:Destroy() end
                         tooltip = Instance.new("Frame")
-                        tooltip.Size = UDim2.new(0, 0, 0, 0)
+                        tooltip.Size = UDim2.new(0,0,0,0)
                         tooltip.BackgroundColor3 = ThemeManager.Current.NotificationBg
                         tooltip.BorderSizePixel = 0
-                        Instance.new("UICorner", tooltip).CornerRadius = UDim.new(0, 6)
+                        Instance.new("UICorner", tooltip).CornerRadius = UDim.new(0,6)
                         local ttLabel = Instance.new("TextLabel")
                         ttLabel.BackgroundTransparency = 1
                         ttLabel.Text = config.Description
@@ -743,7 +678,7 @@ function ClavisLib:CreateWindow(title, config)
                         ttLabel.Font = Enum.Font.Gotham
                         ttLabel.TextSize = 12
                         ttLabel.Parent = tooltip
-                        ttLabel.Size = UDim2.new(1, 0, 1, 0)
+                        ttLabel.Size = UDim2.new(1,0,1,0)
                         tooltip.Parent = Gui
                         local pos = Utility.GetMouseLocation()
                         tooltip.Position = UDim2.new(0, pos.X + 10, 0, pos.Y + 10)
@@ -764,7 +699,6 @@ function ClavisLib:CreateWindow(title, config)
                 element._wrapper = wrapper
                 element._config = config
 
-                -- Hover & Press effects
                 table.insert(connections, wrapper.MouseEnter:Connect(function()
                     TweenService:Create(wrapper, TweenInfo.new(0.15), {BackgroundColor3 = ThemeManager.Current.ElementHover}):Play()
                     stroke.Color = ThemeManager.Current.ElementStroke:Lerp(Color3.fromRGB(255,255,255), 0.2)
@@ -775,40 +709,40 @@ function ClavisLib:CreateWindow(title, config)
                 end))
                 table.insert(connections, wrapper.InputBegan:Connect(function(input)
                     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                        TweenService:Create(wrapper, TweenInfo.new(0.1), {Size = UDim2.new(1, -4, 0, 38)}):Play()
+                        TweenService:Create(wrapper, TweenInfo.new(0.1), {Size = UDim2.new(1,-4,0,38)}):Play()
                     end
                 end))
                 table.insert(connections, wrapper.InputEnded:Connect(function(input)
-                    TweenService:Create(wrapper, TweenInfo.new(0.2, Enum.EasingStyle.Elastic), {Size = UDim2.new(1, 0, 0, 40)}):Play()
+                    TweenService:Create(wrapper, TweenInfo.new(0.2, Enum.EasingStyle.Elastic), {Size = UDim2.new(1,0,0,40)}):Play()
                 end))
 
                 updateSectionHeight()
                 return element
             end
 
-            -- Components
+            -- Toggle
             function Section:AddToggle(config)
                 local function constructor(parent, cfg, themeMgr)
                     local toggleFrame = Instance.new("Frame")
-                    toggleFrame.Size = UDim2.new(0, 44, 0, 24)
-                    toggleFrame.Position = UDim2.new(1, -50, 0.5, -12)
+                    toggleFrame.Size = UDim2.new(0,44,0,24)
+                    toggleFrame.Position = UDim2.new(1,-50,0.5,-12)
                     toggleFrame.BackgroundColor3 = cfg.Default and themeMgr.Current.IndicatorOn or themeMgr.Current.IndicatorOff
                     toggleFrame.BorderSizePixel = 0
-                    Instance.new("UICorner", toggleFrame).CornerRadius = UDim.new(1, 0)
+                    Instance.new("UICorner", toggleFrame).CornerRadius = UDim.new(1,0)
                     toggleFrame.Parent = parent
 
                     local toggleKnob = Instance.new("Frame")
-                    toggleKnob.Size = UDim2.new(0, 18, 0, 18)
-                    toggleKnob.Position = cfg.Default and UDim2.new(1, -21, 0.5, -9) or UDim2.new(0, 3, 0.5, -9)
+                    toggleKnob.Size = UDim2.new(0,18,0,18)
+                    toggleKnob.Position = cfg.Default and UDim2.new(1,-21,0.5,-9) or UDim2.new(0,3,0.5,-9)
                     toggleKnob.BackgroundColor3 = Color3.fromRGB(255,255,255)
                     toggleKnob.BorderSizePixel = 0
-                    Instance.new("UICorner", toggleKnob).CornerRadius = UDim.new(1, 0)
+                    Instance.new("UICorner", toggleKnob).CornerRadius = UDim.new(1,0)
                     toggleKnob.Parent = toggleFrame
 
                     local label = Instance.new("TextLabel")
                     label.BackgroundTransparency = 1
-                    label.Size = UDim2.new(1, -60, 1, 0)
-                    label.Position = UDim2.new(0, 10, 0, 0)
+                    label.Size = UDim2.new(1,-60,1,0)
+                    label.Position = UDim2.new(0,10,0,0)
                     label.Text = cfg.Name
                     label.TextColor3 = themeMgr.Current.ElementText
                     label.Font = Enum.Font.Gotham
@@ -821,14 +755,13 @@ function ClavisLib:CreateWindow(title, config)
                     if flag and Flags[flag] ~= nil then
                         state = Flags[flag]
                     end
-                    -- apply initial state
                     local function applyState()
                         if state then
                             toggleFrame.BackgroundColor3 = themeMgr.Current.IndicatorOn
-                            toggleKnob:TweenPosition(UDim2.new(1, -21, 0.5, -9), "Out", "Quad", 0.15)
+                            toggleKnob:TweenPosition(UDim2.new(1,-21,0.5,-9), "Out", "Quad", 0.15)
                         else
                             toggleFrame.BackgroundColor3 = themeMgr.Current.IndicatorOff
-                            toggleKnob:TweenPosition(UDim2.new(0, 3, 0.5, -9), "Out", "Quad", 0.15)
+                            toggleKnob:TweenPosition(UDim2.new(0,3,0.5,-9), "Out", "Quad", 0.15)
                         end
                     end
                     applyState()
@@ -838,10 +771,10 @@ function ClavisLib:CreateWindow(title, config)
                         if flag then Flags[flag] = val end
                         if val then
                             TweenService:Create(toggleFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {BackgroundColor3 = themeMgr.Current.IndicatorOn}):Play()
-                            TweenService:Create(toggleKnob, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {Position = UDim2.new(1, -21, 0.5, -9)}):Play()
+                            TweenService:Create(toggleKnob, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {Position = UDim2.new(1,-21,0.5,-9)}):Play()
                         else
                             TweenService:Create(toggleFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {BackgroundColor3 = themeMgr.Current.IndicatorOff}):Play()
-                            TweenService:Create(toggleKnob, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {Position = UDim2.new(0, 3, 0.5, -9)}):Play()
+                            TweenService:Create(toggleKnob, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {Position = UDim2.new(0,3,0.5,-9)}):Play()
                         end
                         pcall(function() if cfg.Callback then cfg.Callback(val) end end)
                     end
@@ -860,11 +793,12 @@ function ClavisLib:CreateWindow(title, config)
                 return addElement(config, constructor)
             end
 
+            -- Button
             function Section:AddButton(config)
                 local function constructor(parent, cfg, themeMgr)
                     local btn = Instance.new("TextButton")
-                    btn.Size = UDim2.new(1, -20, 1, -10)
-                    btn.Position = UDim2.new(0, 10, 0, 5)
+                    btn.Size = UDim2.new(1,-20,1,-10)
+                    btn.Position = UDim2.new(0,10,0,5)
                     btn.BackgroundTransparency = 1
                     btn.Text = cfg.Name
                     btn.TextColor3 = themeMgr.Current.Accent
@@ -886,16 +820,17 @@ function ClavisLib:CreateWindow(title, config)
                 return addElement(config, constructor)
             end
 
+            -- Slider (drag)
             function Section:AddSlider(config)
                 local function constructor(parent, cfg, themeMgr)
                     local sliderFrame = Instance.new("Frame")
-                    sliderFrame.Size = UDim2.new(1, -40, 1, 0)
+                    sliderFrame.Size = UDim2.new(1,-40,1,0)
                     sliderFrame.BackgroundTransparency = 1
                     sliderFrame.Parent = parent
 
                     local label = Instance.new("TextLabel")
                     label.BackgroundTransparency = 1
-                    label.Size = UDim2.new(0.4, 0, 1, 0)
+                    label.Size = UDim2.new(0.4,0,1,0)
                     label.Text = cfg.Name
                     label.TextColor3 = themeMgr.Current.ElementText
                     label.Font = Enum.Font.Gotham
@@ -905,8 +840,8 @@ function ClavisLib:CreateWindow(title, config)
 
                     local valueLabel = Instance.new("TextLabel")
                     valueLabel.BackgroundTransparency = 1
-                    valueLabel.Size = UDim2.new(0, 60, 1, 0)
-                    valueLabel.Position = UDim2.new(1, -60, 0, 0)
+                    valueLabel.Size = UDim2.new(0,60,1,0)
+                    valueLabel.Position = UDim2.new(1,-60,0,0)
                     valueLabel.Text = ""
                     valueLabel.TextColor3 = themeMgr.Current.Accent
                     valueLabel.Font = Enum.Font.GothamBold
@@ -915,36 +850,35 @@ function ClavisLib:CreateWindow(title, config)
                     valueLabel.Parent = sliderFrame
 
                     local track = Instance.new("Frame")
-                    track.Size = UDim2.new(1, -80, 0, 6)
-                    track.Position = UDim2.new(0, 60, 0.5, -3)
+                    track.Size = UDim2.new(1,-80,0,6)
+                    track.Position = UDim2.new(0,60,0.5,-3)
                     track.BackgroundColor3 = themeMgr.Current.SliderTrack
                     track.BorderSizePixel = 0
-                    Instance.new("UICorner", track).CornerRadius = UDim.new(0, 3)
+                    Instance.new("UICorner", track).CornerRadius = UDim.new(0,3)
                     track.Parent = sliderFrame
 
                     local fill = Instance.new("Frame")
-                    fill.Size = UDim2.new(0, 0, 1, 0)
+                    fill.Size = UDim2.new(0,0,1,0)
                     fill.BackgroundColor3 = themeMgr.Current.SliderFill
                     fill.BorderSizePixel = 0
-                    Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 3)
+                    Instance.new("UICorner", fill).CornerRadius = UDim.new(0,3)
                     fill.Parent = track
 
                     local thumb = Instance.new("Frame")
-                    thumb.Size = UDim2.new(0, 14, 0, 14)
-                    thumb.Position = UDim2.new(0, 0, 0.5, -7)
+                    thumb.Size = UDim2.new(0,14,0,14)
+                    thumb.Position = UDim2.new(0,0,0.5,-7)
                     thumb.BackgroundColor3 = themeMgr.Current.SliderThumb
                     thumb.BorderSizePixel = 0
-                    Instance.new("UICorner", thumb).CornerRadius = UDim.new(1, 0)
+                    Instance.new("UICorner", thumb).CornerRadius = UDim.new(1,0)
                     local thumbStroke = Instance.new("UIStroke")
                     thumbStroke.Thickness = 2
                     thumbStroke.Color = themeMgr.Current.ElementStroke
                     thumbStroke.Parent = thumb
                     thumb.Parent = track
 
-                    -- expanded hitbox
                     local hitbox = Instance.new("Frame")
-                    hitbox.Size = UDim2.new(0, 24, 0, 24)
-                    hitbox.Position = UDim2.new(0, -5, 0, -5)
+                    hitbox.Size = UDim2.new(0,24,0,24)
+                    hitbox.Position = UDim2.new(0,-5,0,-5)
                     hitbox.BackgroundTransparency = 1
                     hitbox.Parent = thumb
 
@@ -954,11 +888,11 @@ function ClavisLib:CreateWindow(title, config)
                     local current = cfg.Default or min
                     local flag = cfg.Flag
                     if flag and Flags[flag] ~= nil then current = Flags[flag] end
-                    local function updateVisual(val, throttle)
+                    local function updateVisual(val)
                         val = Utility.Clamp(val, min, max)
                         local frac = (val - min) / (max - min)
-                        fill.Size = UDim2.new(frac, 0, 1, 0)
-                        thumb.Position = UDim2.new(frac, -7, 0.5, -7)
+                        fill.Size = UDim2.new(frac,0,1,0)
+                        thumb.Position = UDim2.new(frac,-7,0.5,-7)
                         valueLabel.Text = (cfg.ValuePrefix or "") .. tostring(val) .. (cfg.ValueSuffix or "")
                     end
                     updateVisual(current)
@@ -997,11 +931,9 @@ function ClavisLib:CreateWindow(title, config)
 
                     table.insert(connections, hitbox.InputBegan:Connect(startDrag))
                     table.insert(connections, track.InputBegan:Connect(startDrag))
-
                     table.insert(connections, UserInputService.InputChanged:Connect(function(input)
                         if dragging and inputObj and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                             if input.UserInputType == Enum.UserInputType.Touch then
-                                -- Ensure it's the same touch
                                 if input.UserInputState == Enum.UserInputState.Move and input == inputObj then
                                     setFromMouse(input.Position)
                                 end
@@ -1026,11 +958,12 @@ function ClavisLib:CreateWindow(title, config)
                 return addElement(config, constructor)
             end
 
+            -- Dropdown
             function Section:AddDropdown(config)
                 local function constructor(parent, cfg, themeMgr)
                     local mainBtn = Instance.new("TextButton")
-                    mainBtn.Size = UDim2.new(1, -20, 1, -10)
-                    mainBtn.Position = UDim2.new(0, 10, 0, 5)
+                    mainBtn.Size = UDim2.new(1,-20,1,-10)
+                    mainBtn.Position = UDim2.new(0,10,0,5)
                     mainBtn.BackgroundTransparency = 1
                     mainBtn.Text = cfg.Name .. ": " .. (cfg.Default or (cfg.MultiSelect and "" or (cfg.Options[1] or "")))
                     mainBtn.TextColor3 = themeMgr.Current.ElementText
@@ -1041,33 +974,31 @@ function ClavisLib:CreateWindow(title, config)
 
                     local chevron = Instance.new("TextLabel")
                     chevron.BackgroundTransparency = 1
-                    chevron.Size = UDim2.new(0, 20, 1, 0)
-                    chevron.Position = UDim2.new(1, -20, 0, 0)
+                    chevron.Size = UDim2.new(0,20,1,0)
+                    chevron.Position = UDim2.new(1,-20,0,0)
                     chevron.Text = "▼"
                     chevron.TextColor3 = themeMgr.Current.Accent
                     chevron.Font = Enum.Font.GothamBold
                     chevron.TextSize = 16
                     chevron.Parent = mainBtn
 
-                    -- Dropdown list (placed relative to the window, not local)
                     local dropdown = Instance.new("Frame")
                     dropdown.Name = "DropdownList"
-                    dropdown.Size = UDim2.new(1, 0, 0, 0)
-                    dropdown.Position = UDim2.new(0, 0, 1, 0)
+                    dropdown.Size = UDim2.new(1,0,0,0)
+                    dropdown.Position = UDim2.new(0,0,1,0)
                     dropdown.BackgroundColor3 = themeMgr.Current.DropdownBg
                     dropdown.BorderSizePixel = 0
                     dropdown.ClipsDescendants = true
                     dropdown.ZIndex = 10
-                    Instance.new("UICorner", dropdown).CornerRadius = UDim.new(0, 6)
+                    Instance.new("UICorner", dropdown).CornerRadius = UDim.new(0,6)
                     dropdown.Parent = parent
 
-                    -- Scrolling list inside
                     local list = Instance.new("ScrollingFrame")
-                    list.Size = UDim2.new(1, -4, 1, -4)
-                    list.Position = UDim2.new(0, 2, 0, 2)
+                    list.Size = UDim2.new(1,-4,1,-4)
+                    list.Position = UDim2.new(0,2,0,2)
                     list.BackgroundTransparency = 1
                     list.ScrollBarThickness = 3
-                    list.CanvasSize = UDim2.new(0, 0, 0, 0)
+                    list.CanvasSize = UDim2.new(0,0,0,0)
                     list.AutomaticCanvasSize = Enum.AutomaticSize.Y
                     list.Parent = dropdown
                     local listLayout = Instance.new("UIListLayout")
@@ -1090,8 +1021,8 @@ function ClavisLib:CreateWindow(title, config)
                     local searchBox
                     if isSearchable then
                         searchBox = Instance.new("TextBox")
-                        searchBox.Size = UDim2.new(1, -10, 0, 25)
-                        searchBox.Position = UDim2.new(0, 5, 0, 5)
+                        searchBox.Size = UDim2.new(1,-10,0,25)
+                        searchBox.Position = UDim2.new(0,5,0,5)
                         searchBox.BackgroundColor3 = themeMgr.Current.ElementBg
                         searchBox.Text = ""
                         searchBox.PlaceholderText = "Search..."
@@ -1099,7 +1030,7 @@ function ClavisLib:CreateWindow(title, config)
                         searchBox.Font = Enum.Font.Gotham
                         searchBox.TextSize = 13
                         searchBox.BorderSizePixel = 0
-                        Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0, 4)
+                        Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0,4)
                         searchBox.Parent = dropdown
                         table.insert(connections, searchBox:GetPropertyChangedSignal("Text"):Connect(function()
                             rebuildOptions(searchBox.Text)
@@ -1114,7 +1045,7 @@ function ClavisLib:CreateWindow(title, config)
                         for _, opt in ipairs(options) do
                             if filter and not opt:lower():find(filter) then continue end
                             local optFrame = Instance.new("TextButton")
-                            optFrame.Size = UDim2.new(1, 0, 0, 25)
+                            optFrame.Size = UDim2.new(1,0,0,25)
                             optFrame.BackgroundTransparency = 1
                             optFrame.Text = ""
                             optFrame.BorderSizePixel = 0
@@ -1122,8 +1053,8 @@ function ClavisLib:CreateWindow(title, config)
 
                             local optLabel = Instance.new("TextLabel")
                             optLabel.BackgroundTransparency = 1
-                            optLabel.Size = UDim2.new(1, -30, 1, 0)
-                            optLabel.Position = UDim2.new(0, 5, 0, 0)
+                            optLabel.Size = UDim2.new(1,-30,1,0)
+                            optLabel.Position = UDim2.new(0,5,0,0)
                             optLabel.Text = opt
                             optLabel.TextColor3 = themeMgr.Current.ElementText
                             optLabel.Font = Enum.Font.Gotham
@@ -1134,11 +1065,11 @@ function ClavisLib:CreateWindow(title, config)
                             local selectedMark
                             if isMulti then
                                 selectedMark = Instance.new("Frame")
-                                selectedMark.Size = UDim2.new(0, 16, 0, 16)
-                                selectedMark.Position = UDim2.new(1, -20, 0.5, -8)
+                                selectedMark.Size = UDim2.new(0,16,0,16)
+                                selectedMark.Position = UDim2.new(1,-20,0.5,-8)
                                 selectedMark.BackgroundColor3 = table.find(selected, opt) and themeMgr.Current.IndicatorOn or themeMgr.Current.IndicatorOff
                                 selectedMark.BorderSizePixel = 0
-                                Instance.new("UICorner", selectedMark).CornerRadius = UDim.new(0, 3)
+                                Instance.new("UICorner", selectedMark).CornerRadius = UDim.new(0,3)
                                 selectedMark.Parent = optFrame
                             end
 
@@ -1150,7 +1081,6 @@ function ClavisLib:CreateWindow(title, config)
                                     else
                                         table.insert(selected, opt)
                                     end
-                                    -- update chip display
                                     mainBtn.Text = cfg.Name .. ": " .. table.concat(selected, ", ")
                                     if selectedMark then
                                         selectedMark.BackgroundColor3 = table.find(selected, opt) and themeMgr.Current.IndicatorOn or themeMgr.Current.IndicatorOff
@@ -1159,32 +1089,31 @@ function ClavisLib:CreateWindow(title, config)
                                 else
                                     selected = opt
                                     mainBtn.Text = cfg.Name .. ": " .. opt
-                                    dropdown:TweenSize(UDim2.new(1, 0, 0, 0), "In", "Quad", 0.2, true)
+                                    dropdown:TweenSize(UDim2.new(1,0,0,0), "In", "Quad", 0.2, true)
                                     pcall(function() cfg.Callback(selected) end)
                                 end
                             end)
                             optFrame.MouseEnter:Connect(function() optFrame.BackgroundColor3 = themeMgr.Current.DropdownHover end)
                             optFrame.MouseLeave:Connect(function() optFrame.BackgroundTransparency = 1 end)
                         end
-                        list.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y)
+                        list.CanvasSize = UDim2.new(0,0,0,listLayout.AbsoluteContentSize.Y)
                     end
                     rebuildOptions()
 
                     local expanded = false
                     local function toggleDropdown()
                         if expanded then
-                            dropdown:TweenSize(UDim2.new(1, 0, 0, 0), "In", "Quad", 0.2, true)
+                            dropdown:TweenSize(UDim2.new(1,0,0,0), "In", "Quad", 0.2, true)
                             chevron.Text = "▼"
                         else
                             local listHeight = math.min(200, listLayout.AbsoluteContentSize.Y + (isSearchable and 30 or 0) + 10)
-                            dropdown:TweenSize(UDim2.new(1, 0, 0, listHeight), "Out", "Back", 0.3)
+                            dropdown:TweenSize(UDim2.new(1,0,0,listHeight), "Out", "Back", 0.3)
                             chevron.Text = "▲"
                         end
                         expanded = not expanded
                     end
                     table.insert(connections, mainBtn.MouseButton1Click:Connect(toggleDropdown))
 
-                    -- Close when clicking outside
                     local closeConnection
                     closeConnection = UserInputService.InputBegan:Connect(function(input)
                         if expanded and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
@@ -1204,26 +1133,27 @@ function ClavisLib:CreateWindow(title, config)
 
                     return {
                         UpdateOptions = function(newOpts) options = newOpts; rebuildOptions(searchBox and searchBox.Text) end,
-                        SetValue = function(val) selected = val; mainBtn.Text = cfg.Name .. ": " .. (isMulti and table.concat(val, ", ") or val) end,
+                        SetValue = function(val) selected = val; mainBtn.Text = cfg.Name .. ": " .. (isMulti and table.concat(val,", ") or val) end,
                         GetValue = function() return selected end,
                     }
                 end
                 return addElement(config, constructor)
             end
 
+            -- ColorPicker (simple)
             function Section:AddColorPicker(config)
                 local function constructor(parent, cfg, themeMgr)
                     local swatch = Instance.new("Frame")
-                    swatch.Size = UDim2.new(0, 30, 0, 30)
-                    swatch.Position = UDim2.new(1, -40, 0.5, -15)
+                    swatch.Size = UDim2.new(0,30,0,30)
+                    swatch.Position = UDim2.new(1,-40,0.5,-15)
                     swatch.BackgroundColor3 = cfg.Default or Color3.fromRGB(255,255,255)
                     swatch.BorderSizePixel = 0
-                    Instance.new("UICorner", swatch).CornerRadius = UDim.new(0, 6)
+                    Instance.new("UICorner", swatch).CornerRadius = UDim.new(0,6)
                     swatch.Parent = parent
 
                     local label = Instance.new("TextLabel")
                     label.BackgroundTransparency = 1
-                    label.Size = UDim2.new(1, -80, 1, 0)
+                    label.Size = UDim2.new(1,-80,1,0)
                     label.Text = cfg.Name
                     label.TextColor3 = themeMgr.Current.ElementText
                     label.Font = Enum.Font.Gotham
@@ -1232,61 +1162,36 @@ function ClavisLib:CreateWindow(title, config)
                     label.Parent = parent
 
                     local popup = Instance.new("Frame")
-                    popup.Size = UDim2.new(0, 200, 0, 0)
-                    popup.Position = UDim2.new(1, -210, 1, -5)
+                    popup.Size = UDim2.new(0,200,0,0)
+                    popup.Position = UDim2.new(1,-210,1,-5)
                     popup.BackgroundColor3 = themeMgr.Current.DropdownBg
                     popup.BorderSizePixel = 0
                     popup.ClipsDescendants = true
                     popup.ZIndex = 15
-                    Instance.new("UICorner", popup).CornerRadius = UDim.new(0, 8)
+                    Instance.new("UICorner", popup).CornerRadius = UDim.new(0,8)
                     popup.Parent = parent
 
                     local popupVisible = false
                     local function togglePopup()
                         if popupVisible then
-                            popup:TweenSize(UDim2.new(0, 200, 0, 0), "In", "Quad", 0.2)
+                            popup:TweenSize(UDim2.new(0,200,0,0), "In", "Quad", 0.2)
                         else
-                            popup:TweenSize(UDim2.new(0, 200, 0, 130), "Out", "Back", 0.3)
-                            -- Build sliders inside popup if not already
+                            popup:TweenSize(UDim2.new(0,200,0,130), "Out", "Back", 0.3)
                             if #popup:GetChildren() <= 1 then
-                                local hueSlider, satSlider, valSlider
-                                local function updateColor()
-                                    local h = hueSlider and tonumber(hueSlider.Value) or 0
-                                    local s = satSlider and tonumber(satSlider.Value) or 0
-                                    local v = valSlider and tonumber(valSlider.Value) or 0
-                                    local color = Color3.fromHSV(h, s, v)
-                                    swatch.BackgroundColor3 = color
-                                    pcall(function() cfg.Callback(color) end)
-                                end
-                                -- Hue slider
-                                local hueLabel = Instance.new("TextLabel")
-                                hueLabel.Size = UDim2.new(1, 0, 0, 20)
-                                hueLabel.BackgroundTransparency = 1
-                                hueLabel.Text = "Hue"
-                                hueLabel.TextColor3 = themeMgr.Current.ElementText
-                                hueLabel.Font = Enum.Font.Gotham
-                                hueLabel.TextSize = 12
-                                hueLabel.Parent = popup
-                                hueSlider = Instance.new("TextBox") -- simple textbox for demo, would use slider
-                                hueSlider.Size = UDim2.new(1, -10, 0, 20)
-                                hueSlider.Position = UDim2.new(0, 5, 0, 20)
-                                hueSlider.Text = "0"
-                                hueSlider.Parent = popup
-                                -- Sat, Val similarly... (simplified)
-                                -- For full implementation would add more sliders; here we'll use a color input.
+                                -- Hex input
                                 local hexInput = Instance.new("TextBox")
-                                hexInput.Size = UDim2.new(1, -10, 0, 25)
-                                hexInput.Position = UDim2.new(0, 5, 0, 100)
+                                hexInput.Size = UDim2.new(1,-10,0,25)
+                                hexInput.Position = UDim2.new(0,5,0,100)
                                 hexInput.PlaceholderText = "#FFFFFF"
                                 hexInput.Text = "#" .. (cfg.Default and Color3.toHex(cfg.Default) or "FFFFFF")
                                 hexInput.Parent = popup
-                                hexInput.FocusLost:Connect(function()
+                                table.insert(connections, hexInput.FocusLost:Connect(function()
                                     local col = Color3.fromHex(hexInput.Text)
                                     if col then
                                         swatch.BackgroundColor3 = col
                                         pcall(function() cfg.Callback(col) end)
                                     end
-                                end)
+                                end))
                             end
                         end
                         popupVisible = not popupVisible
@@ -1306,11 +1211,12 @@ function ClavisLib:CreateWindow(title, config)
                 return addElement(config, constructor)
             end
 
+            -- Bind
             function Section:AddBind(config)
                 local function constructor(parent, cfg, themeMgr)
                     local btn = Instance.new("TextButton")
-                    btn.Size = UDim2.new(1, -20, 1, -10)
-                    btn.Position = UDim2.new(0, 10, 0, 5)
+                    btn.Size = UDim2.new(1,-20,1,-10)
+                    btn.Position = UDim2.new(0,10,0,5)
                     btn.BackgroundTransparency = 1
                     btn.Text = cfg.Name .. ": " .. (cfg.Default and (type(cfg.Default)=="EnumItem" and cfg.Default.Name or tostring(cfg.Default)) or "None")
                     btn.TextColor3 = themeMgr.Current.ElementText
@@ -1354,11 +1260,12 @@ function ClavisLib:CreateWindow(title, config)
                 return addElement(config, constructor)
             end
 
+            -- Textbox
             function Section:AddTextbox(config)
                 local function constructor(parent, cfg, themeMgr)
                     local box = Instance.new("TextBox")
-                    box.Size = UDim2.new(1, -20, 0, 30)
-                    box.Position = UDim2.new(0, 10, 0.5, -15)
+                    box.Size = UDim2.new(1,-20,0,30)
+                    box.Position = UDim2.new(0,10,0.5,-15)
                     box.BackgroundColor3 = themeMgr.Current.ElementBg
                     box.BorderSizePixel = 0
                     box.Text = cfg.Default or ""
@@ -1368,9 +1275,8 @@ function ClavisLib:CreateWindow(title, config)
                     box.Font = Enum.Font.Gotham
                     box.TextSize = 14
                     box.ClearTextOnFocus = false
-                    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 8)
+                    Instance.new("UICorner", box).CornerRadius = UDim.new(0,8)
                     box.Parent = parent
-
                     if cfg.MultiLine then
                         box.TextWrapped = true
                         box.TextYAlignment = Enum.TextYAlignment.Top
@@ -1388,7 +1294,7 @@ function ClavisLib:CreateWindow(title, config)
 
             function Section:AddLabel(text)
                 local lbl = Instance.new("TextLabel")
-                lbl.Size = UDim2.new(1, 0, 0, 20)
+                lbl.Size = UDim2.new(1,0,0,20)
                 lbl.BackgroundTransparency = 1
                 lbl.Text = text
                 lbl.TextColor3 = ThemeManager.Current.ElementText
@@ -1402,12 +1308,12 @@ function ClavisLib:CreateWindow(title, config)
 
             function Section:AddParagraph(title, body)
                 local frame = Instance.new("Frame")
-                frame.Size = UDim2.new(1, 0, 0, 50)
+                frame.Size = UDim2.new(1,0,0,50)
                 frame.BackgroundTransparency = 1
                 frame.BorderSizePixel = 0
                 frame.Parent = ElementsFrame
                 local tlabel = Instance.new("TextLabel")
-                tlabel.Size = UDim2.new(1, 0, 0, 20)
+                tlabel.Size = UDim2.new(1,0,0,20)
                 tlabel.BackgroundTransparency = 1
                 tlabel.Text = title
                 tlabel.Font = Enum.Font.GothamBold
@@ -1416,8 +1322,8 @@ function ClavisLib:CreateWindow(title, config)
                 tlabel.TextXAlignment = Enum.TextXAlignment.Left
                 tlabel.Parent = frame
                 local blabel = Instance.new("TextLabel")
-                blabel.Size = UDim2.new(1, 0, 0, 30)
-                blabel.Position = UDim2.new(0, 0, 0, 22)
+                blabel.Size = UDim2.new(1,0,0,30)
+                blabel.Position = UDim2.new(0,0,0,22)
                 blabel.BackgroundTransparency = 1
                 blabel.Text = body
                 blabel.TextColor3 = ThemeManager.Current.ElementText
@@ -1432,7 +1338,7 @@ function ClavisLib:CreateWindow(title, config)
 
             function Section:AddSeparator()
                 local sep = Instance.new("Frame")
-                sep.Size = UDim2.new(1, 0, 0, 1)
+                sep.Size = UDim2.new(1,0,0,1)
                 sep.BackgroundColor3 = ThemeManager.Current.ElementStroke
                 sep.BorderSizePixel = 0
                 sep.Parent = ElementsFrame
@@ -1464,13 +1370,13 @@ function ClavisLib:CreateWindow(title, config)
 
     function Window:Notify(data)
         local notif = Instance.new("Frame")
-        notif.Size = UDim2.new(1, 0, 0, 60)
+        notif.Size = UDim2.new(1,0,0,60)
         notif.BackgroundColor3 = ThemeManager.Current.NotificationBg
         notif.BorderSizePixel = 0
-        Instance.new("UICorner", notif).CornerRadius = UDim.new(0, 8)
+        Instance.new("UICorner", notif).CornerRadius = UDim.new(0,8)
         local titleLabel = Instance.new("TextLabel")
-        titleLabel.Size = UDim2.new(1, -10, 0, 20)
-        titleLabel.Position = UDim2.new(0, 5, 0, 5)
+        titleLabel.Size = UDim2.new(1,-10,0,20)
+        titleLabel.Position = UDim2.new(0,5,0,5)
         titleLabel.BackgroundTransparency = 1
         titleLabel.Text = data.Title or "Notification"
         titleLabel.TextColor3 = ThemeManager.Current.Accent
@@ -1479,8 +1385,8 @@ function ClavisLib:CreateWindow(title, config)
         titleLabel.TextXAlignment = Enum.TextXAlignment.Left
         titleLabel.Parent = notif
         local descLabel = Instance.new("TextLabel")
-        descLabel.Size = UDim2.new(1, -10, 0, 30)
-        descLabel.Position = UDim2.new(0, 5, 0, 25)
+        descLabel.Size = UDim2.new(1,-10,0,30)
+        descLabel.Position = UDim2.new(0,5,0,25)
         descLabel.BackgroundTransparency = 1
         descLabel.Text = data.Content or ""
         descLabel.TextColor3 = ThemeManager.Current.NotificationText
@@ -1491,15 +1397,12 @@ function ClavisLib:CreateWindow(title, config)
         descLabel.Parent = notif
         notif.Parent = NotifHolder
 
-        -- Animate in
-        notif.Position = UDim2.new(1, 0, 0, -60)
-        TweenService:Create(notif, TweenInfo.new(0.5, Enum.EasingStyle.Back), {Position = UDim2.new(0, 0, 0, 0)}):Play()
-        -- Auto dismiss
-        local duration = data.Duration or 5
-        delay(duration, function()
+        notif.Position = UDim2.new(1,0,0,-60)
+        TweenService:Create(notif, TweenInfo.new(0.5, Enum.EasingStyle.Back), {Position = UDim2.new(0,0,0,0)}):Play()
+        task.delay(data.Duration or 5, function()
             if notif and notif.Parent then
-                TweenService:Create(notif, TweenInfo.new(0.3), {Position = UDim2.new(1, 0, 0, -60)}):Play()
-                wait(0.3)
+                TweenService:Create(notif, TweenInfo.new(0.3), {Position = UDim2.new(1,0,0,-60)}):Play()
+                task.wait(0.3)
                 if notif then notif:Destroy() end
             end
         end)
@@ -1507,16 +1410,12 @@ function ClavisLib:CreateWindow(title, config)
 
     -- Entrance animation
     Main.BackgroundTransparency = 1
-    Main.Size = UDim2.new(0, 0, 0, 0)
+    Main.Size = UDim2.new(0,0,0,0)
     TweenService:Create(Main, TweenInfo.new(0.5, Enum.EasingStyle.Back), {BackgroundTransparency = 0, Size = config.Size or UDim2.new(0,600,0,450)}):Play()
 
-    -- Cleanup on close
     local function cleanup()
         for _, conn in ipairs(connections) do
             conn:Disconnect()
-        end
-        for _, tween in ipairs(activeTweens) do
-            tween:Cancel()
         end
         Gui:Destroy()
     end
@@ -1525,12 +1424,12 @@ function ClavisLib:CreateWindow(title, config)
     return Window
 end
 
--- ==================== GLOBAL THEME SETTER ====================
+-- ============== GLOBAL THEME SETTER ==============
 function ClavisLib:SetGlobalTheme(theme)
     ThemeManager.SetTheme(theme)
 end
 
--- ==================== AUTO-LOAD FROM CONFIG ====================
+-- ============== AUTO-LOAD FROM CONFIG ==============
 function ClavisLib:LoadAuto(config)
     local window = self:CreateWindow(config.Title or "ClavisLib", config.Window)
     for _, tabCfg in ipairs(config.Tabs or {}) do
