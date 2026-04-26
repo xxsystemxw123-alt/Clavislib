@@ -1,9 +1,8 @@
 --[[
     ClavisLib - The ultimate Roblox UI library
-    Version 1.0.1 (Luau optimized, error‑hardened)
+    Version 1.0.2 (Fixed empty content area)
     Carga: local ClavisLib = loadstring(game:HttpGet("URL"))()
-           local Window = ClavisLib:CreateWindow("Title", {Theme = "Dark"})
-]]
+--]]
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -185,7 +184,7 @@ local Flags = {}
 
 -- ==================== CLASSLIB ====================
 local ClavisLib = {
-    Version = "1.0.1"
+    Version = "1.0.2"
 }
 
 -- ================ WINDOW CREATION ================
@@ -417,30 +416,6 @@ function ClavisLib:CreateWindow(title, config)
     TabList.Padding = UDim.new(0,6)
     TabList.Parent = TabBar
 
-    -- Fade indicators
-    local LeftFade = Instance.new("Frame")
-    LeftFade.Size = UDim2.new(0,20,1,0)
-    LeftFade.Position = UDim2.new(0,0,0,0)
-    LeftFade.BackgroundTransparency = 1
-    LeftFade.BorderSizePixel = 0
-    LeftFade.ZIndex = 2
-    Instance.new("UIGradient", LeftFade).Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(0,0,0)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(0,0,0)),
-    })
-    LeftFade.Parent = TabBar
-    local RightFade = Instance.new("Frame")
-    RightFade.Size = UDim2.new(0,20,1,0)
-    RightFade.Position = UDim2.new(1,-20,0,0)
-    RightFade.BackgroundTransparency = 1
-    RightFade.BorderSizePixel = 0
-    RightFade.ZIndex = 2
-    Instance.new("UIGradient", RightFade).Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(0,0,0)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(0,0,0)),
-    })
-    RightFade.Parent = TabBar
-
     local ContentArea = Instance.new("Frame")
     ContentArea.Name = "Content"
     ContentArea.Size = UDim2.new(1,-20,1,-100)
@@ -615,7 +590,7 @@ function ClavisLib:CreateWindow(title, config)
             ElementsFrame.BackgroundTransparency = 1
             ElementsFrame.BorderSizePixel = 0
             ElementsFrame.Visible = not isCollapsed
-            ElementsFrame.ClipsDescendants = true
+            ElementsFrame.ClipsDescendants = true -- lo mantenemos, ahora el tamaño se ajusta
             local ElementsList = Instance.new("UIListLayout")
             ElementsList.Padding = UDim.new(0,6)
             ElementsList.Parent = ElementsFrame
@@ -624,9 +599,11 @@ function ClavisLib:CreateWindow(title, config)
             local function updateSectionHeight()
                 local headerHeight = 30
                 local elementHeight = ElementsFrame.Visible and ElementsList.AbsoluteContentSize.Y or 0
+                -- ¡CORRECCIÓN! Asignar altura al ElementsFrame para que los hijos sean visibles
+                ElementsFrame.Size = UDim2.new(1, 0, 0, elementHeight)
                 local totalHeight = headerHeight + elementHeight + (elementHeight > 0 and 10 or 0)
-                SectionFrame.Size = UDim2.new(1,-10,0,totalHeight)
-                Content.CanvasSize = UDim2.new(0,0,0, ContentList.AbsoluteContentSize.Y + 20)
+                SectionFrame.Size = UDim2.new(1, -10, 0, totalHeight)
+                -- Content.CanvasSize se ajusta con AutomaticCanvasSize, nada que hacer
             end
 
             local function collapseToggle()
@@ -661,7 +638,6 @@ function ClavisLib:CreateWindow(title, config)
                 stroke.Thickness = 1.5
                 stroke.Parent = wrapper
 
-                -- tooltip
                 if config.Description then
                     local tooltip
                     local function showTooltip()
@@ -1178,7 +1154,6 @@ function ClavisLib:CreateWindow(title, config)
                         else
                             popup:TweenSize(UDim2.new(0,200,0,130), "Out", "Back", 0.3)
                             if #popup:GetChildren() <= 1 then
-                                -- Hex input
                                 local hexInput = Instance.new("TextBox")
                                 hexInput.Size = UDim2.new(1,-10,0,25)
                                 hexInput.Position = UDim2.new(0,5,0,100)
