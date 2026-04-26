@@ -1,6 +1,6 @@
 --[[
     ClavisLib - The ultimate Roblox UI library
-    Version 1.0.0 (Fixed)
+    Version 1.0.0 (Fix)
     Features: Rayfield-inspired visuals + Orion-style architecture
     Usage:
         local ClavisLib = loadstring(game:HttpGet("URL"))()
